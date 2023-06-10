@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -8,7 +10,7 @@ import (
 
 var sampleSecretKey = []byte("SecretYouShouldHide")
 
-func generateJWT(UserID string) (string, error) {
+func GenerateJWT(UserID string) (string, error) {
 	token := jwt.New(jwt.SigningMethodEdDSA)
 
 	// comment
@@ -24,4 +26,25 @@ func generateJWT(UserID string) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+func verifyJWT(ctx context.Context) (bool, error) {
+	if ctx.Value("Token") != nil {
+		token, err := jwt.Parse(ctx.Value("Token").(string), func(token *jwt.Token) (interface{}, error) {
+			_, ok := token.Method.(*jwt.SigningMethodECDSA)
+			if !ok {
+				return nil, fmt.Errorf("unexpected signing method")
+			}
+
+			return sampleSecretKey, nil
+		})
+		if err != nil {
+			return false, err
+		}
+
+		if !token.Valid {
+			return false, err
+		}
+	}
+	return false, fmt.Errorf("you're unauthorized")
 }
